@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AudioLines,
   Play,
@@ -95,6 +96,7 @@ function TTSPage() {
   const [accentFilter, setAccentFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
+  const navigate = useNavigate();
   const previewAudioRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -458,6 +460,11 @@ function TTSPage() {
       setIsMuted(false);
     } catch (err) {
       console.error("TTS generation error:", err);
+
+      if (err.code === "unauthorized" || err.code === "invalid_token") {
+        navigate("/login", { state: { from: { pathname: "/" } } });
+        return;
+      }
 
       if (err.retryAfterMs) {
         const retryMs = Number(err.retryAfterMs);
