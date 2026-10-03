@@ -13,6 +13,8 @@ import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
+import TwoFactorSettings from "./pages/TwoFactorSettings";
+
 function App() {
   return (
     <AuthProvider>
@@ -34,6 +36,14 @@ function App() {
             <Route path="/changelog" element={<Changelog />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route
+              path="/settings/security"
+              element={
+                <ProtectedRoute>
+                  <TwoFactorSettings />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
 
