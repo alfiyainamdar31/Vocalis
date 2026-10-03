@@ -38,6 +38,16 @@ const RELEASES = [
         ],
       },
       {
+        title: "Authentication",
+        items: [
+          "User account creation and login.",
+          "Email verification with one-time verification codes.",
+          "Protected user sessions.",
+          "Two-factor authentication with authenticator apps.",
+          "Secure password handling.",
+        ],
+      },
+      {
         title: "Experience",
         items: [
           "Responsive interface for desktop and mobile.",
@@ -53,27 +63,43 @@ const RELEASES = [
 const UPCOMING = [
   {
     version: "v0.2.0",
-    label: "Authentication",
+    label: "Usage & Credits",
     items: [
-      "User accounts and authentication.",
-      "User profiles.",
-      "Authorization and protected generation.",
+      "Usage tracking and limits.",
+      "Per-user generation history.",
+      "Credit-based usage system.",
+      "Usage information in the user account.",
     ],
   },
   {
     version: "v0.3.0",
-    label: "Usage & Credits",
-    items: ["Usage tracking and limits.", "Per-user generation history."],
+    label: "Payments",
+    items: [
+      "Plans and subscriptions.",
+      "Credit top-ups.",
+      "Pro account features.",
+      "Payment and subscription management.",
+    ],
   },
   {
     version: "v0.4.0",
-    label: "Payments",
-    items: ["Plans and subscriptions.", "Credit top-ups."],
+    label: "Voice & Audio",
+    items: [
+      "Expanded voice preview library.",
+      "Additional languages.",
+      "Improved audio generation experience.",
+      "Further voice and playback improvements.",
+    ],
   },
   {
     version: "v0.5.0",
-    label: "Audio Improvements",
-    items: ["Improved voice previews.", "Additional languages."],
+    label: "Product Experience",
+    items: [
+      "Saved projects and generated audio.",
+      "Improved generation history.",
+      "Additional personalization features.",
+      "Further interface and workflow improvements.",
+    ],
   },
 ];
 

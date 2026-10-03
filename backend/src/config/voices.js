@@ -41,7 +41,7 @@ const DEFAULT_VOICE = "Kore";
 const SPEED_INSTRUCTIONS = {
   0.5: "speaking very slowly and clearly",
   0.75: "speaking slowly and clearly",
-  1: "", // normal pace → no instruction injected
+  1: "",
   1.25: "speaking slightly faster than normal",
   1.5: "speaking faster than normal",
   2: "speaking very rapidly",
@@ -55,10 +55,29 @@ const normalizeSpeed = (value) => {
   return SPEED_INSTRUCTIONS[n] !== undefined ? n : DEFAULT_SPEED;
 };
 
+// const VOICE_PREVIEW_BASE =
+//   "/voice-previews";
+
+// const voices = [
+//   {
+//     id: "zephyr",
+//     name: "Zephyr",
+//     language: "en-US",
+//     gender: "female",
+//     description:
+//       "Clear and natural for everyday narration.",
+//     previewUrl:
+//       `${VOICE_PREVIEW_BASE}/en-US/zephyr.wav`,
+//   },
+
+//   // Add the next voices here
+// ];
+
 module.exports = {
   PREBUILT_VOICES,
   DEFAULT_VOICE,
   SPEED_INSTRUCTIONS,
   DEFAULT_SPEED,
   normalizeSpeed,
+  // voices
 };
