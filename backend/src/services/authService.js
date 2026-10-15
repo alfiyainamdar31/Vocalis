@@ -335,7 +335,7 @@ const login = async ({ email, password }) => {
   }
 
   // 2. Check password
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (!isMatch) {
     const error = new Error("Invalid credentials");

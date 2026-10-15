@@ -12,7 +12,6 @@ app.use("/api/auth", authRoutes);
 
 const start = async () => {
   try {
-    // Connect to DB ONCE before starting the server
     await connectDB();
     console.log("Database initialization complete.");
 

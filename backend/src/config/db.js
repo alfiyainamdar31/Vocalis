@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { MONGO_URI } = require("./env.js");
+const { MONGODB_URI } = require("./env.js");
 
 let isConnected = false;
 
@@ -10,8 +10,8 @@ const connectDB = async () => {
   }
 
   try {
-    const db = await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000, // Stop waiting after 5 seconds
+    const db = await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
 
