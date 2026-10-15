@@ -324,41 +324,66 @@ const verifyEmailOtp = async (partialToken, otp) => {
 
 // LOGIN - Step 1: Validate credentials and send OTP
 const login = async ({ email, password }) => {
-  // 1. Find user with a timeout
-  const user = await User.findOne({ email }).maxTimeMS(10000);
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await User.findOne({ email: normalizedEmail });
 
   if (!user) {
-    const error = new Error("Invalid credentials");
-    error.status = 401;
-    error.code = "invalid_credentials";
-    throw error;
+    const err = new Error("Invalid credentials");
+    err.code = "invalid_credentials";
+    err.status = 401;
+    throw err;
   }
 
-  // 2. Check password
   const isMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (!isMatch) {
-    const error = new Error("Invalid credentials");
-    error.status = 401;
-    error.code = "invalid_credentials";
-    throw error;
+    const err = new Error("Invalid credentials");
+    err.code = "invalid_credentials";
+    err.status = 401;
+    throw err;
   }
 
-  // 3. Return the token (MAKE SURE THIS RETURNS)
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    const partialToken = signPartialToken({ sub: user.id }, "two_factor_login");
+    return {
+      requiresTwoFactor: true,
+      partialToken,
+    };
+  }
+
+  const otp = generateOtp();
+
+  loginOtpStore.set(normalizedEmail, {
+    otp,
+    userId: user.id,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    createdAt: Date.now(),
   });
 
+  try {
+    await sendOtpEmail(normalizedEmail, otp);
+  } catch (error) {
+    loginOtpStore.delete(normalizedEmail);
+    const err = new Error(
+      "We could not send the verification email. Please try again.",
+    );
+    err.code = "email_send_failed";
+    err.status = 503;
+    throw err;
+  }
+
+  const partialToken = signPartialToken(
+    { email: normalizedEmail },
+    "login_email_verification",
+  );
+
   return {
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-    },
+    requiresEmailVerification: true,
+    partialToken,
+    message: "Verification code sent to your email.",
   };
 };
-
 // RESEND OTP for login
 const resendLoginOtp = async (partialToken) => {
   const payload = verifyToken(partialToken);

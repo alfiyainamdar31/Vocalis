@@ -31,10 +31,7 @@ const signupController = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const result = await signup({ name, email, password });
-    return res.status(201).json({
-      success: true,
-      ...result,
-    });
+    return res.status(201).json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -43,7 +40,6 @@ const signupController = async (req, res) => {
 const resendSignupOtpController = async (req, res) => {
   try {
     const { partialToken } = req.body;
-
     if (!partialToken) {
       return res.status(400).json({
         success: false,
@@ -51,13 +47,8 @@ const resendSignupOtpController = async (req, res) => {
         message: "Verification session is required.",
       });
     }
-
     const result = await resendSignupOtp(partialToken);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -66,7 +57,6 @@ const resendSignupOtpController = async (req, res) => {
 const verifyEmailOtpController = async (req, res) => {
   try {
     const { partialToken, otp } = req.body;
-
     if (!partialToken || !otp) {
       return res.status(400).json({
         success: false,
@@ -74,13 +64,8 @@ const verifyEmailOtpController = async (req, res) => {
         message: "Verification token and OTP are required.",
       });
     }
-
     const result = await verifyEmailOtp(partialToken, otp);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -90,8 +75,6 @@ const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log("Login attempt for:", email);
-
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -100,30 +83,9 @@ const loginController = async (req, res) => {
       });
     }
 
-    // Add a timeout to prevent infinite pending
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new Error("Login timed out. Database connection may be slow."),
-          ),
-        15000,
-      ),
-    );
-
-    const result = await Promise.race([
-      login({ email, password }),
-      timeoutPromise,
-    ]);
-
-    console.log("Login successful for:", email);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    const result = await login({ email, password });
+    return res.json({ success: true, ...result });
   } catch (err) {
-    console.error("Login controller error:", err.message);
     return handleAuthError(res, err);
   }
 };
@@ -131,7 +93,6 @@ const loginController = async (req, res) => {
 const resendLoginOtpController = async (req, res) => {
   try {
     const { partialToken } = req.body;
-
     if (!partialToken) {
       return res.status(400).json({
         success: false,
@@ -139,13 +100,8 @@ const resendLoginOtpController = async (req, res) => {
         message: "Login session is required.",
       });
     }
-
     const result = await resendLoginOtp(partialToken);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -154,7 +110,6 @@ const resendLoginOtpController = async (req, res) => {
 const verifyLoginOtpController = async (req, res) => {
   try {
     const { partialToken, otp } = req.body;
-
     if (!partialToken || !otp) {
       return res.status(400).json({
         success: false,
@@ -162,13 +117,8 @@ const verifyLoginOtpController = async (req, res) => {
         message: "Login session and OTP are required.",
       });
     }
-
     const result = await verifyLoginOtp(partialToken, otp);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -177,7 +127,6 @@ const verifyLoginOtpController = async (req, res) => {
 const verify2FALoginController = async (req, res) => {
   try {
     const { partialToken, otp } = req.body;
-
     if (!partialToken || !otp) {
       return res.status(400).json({
         success: false,
@@ -185,38 +134,25 @@ const verify2FALoginController = async (req, res) => {
         message: "2FA session and authenticator code are required.",
       });
     }
-
     const result = await verify2FALogin(partialToken, otp);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
 };
 
 const meController = (req, res) => {
-  return res.json({
-    success: true,
-    user: req.user,
-  });
+  return res.json({ success: true, user: req.user });
 };
 
 const logoutController = (_req, res) => {
-  return res.json({
-    success: true,
-  });
+  return res.json({ success: true });
 };
 
 const generate2FASetupController = async (req, res) => {
   try {
     const result = await generate2FASetup(req.user.id);
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -225,7 +161,6 @@ const generate2FASetupController = async (req, res) => {
 const verify2FASetupController = async (req, res) => {
   try {
     const { otp } = req.body;
-
     if (!otp) {
       return res.status(400).json({
         success: false,
@@ -233,13 +168,8 @@ const verify2FASetupController = async (req, res) => {
         message: "Authenticator code is required.",
       });
     }
-
     const result = await verify2FASetup(req.user.id, otp);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
@@ -248,7 +178,6 @@ const verify2FASetupController = async (req, res) => {
 const disable2FAController = async (req, res) => {
   try {
     const { otp } = req.body;
-
     if (!otp) {
       return res.status(400).json({
         success: false,
@@ -256,13 +185,8 @@ const disable2FAController = async (req, res) => {
         message: "Authenticator code is required.",
       });
     }
-
     const result = await disable2FA(req.user.id, otp);
-
-    return res.json({
-      success: true,
-      ...result,
-    });
+    return res.json({ success: true, ...result });
   } catch (err) {
     return handleAuthError(res, err);
   }
