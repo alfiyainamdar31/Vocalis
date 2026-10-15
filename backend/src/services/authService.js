@@ -324,87 +324,38 @@ const verifyEmailOtp = async (partialToken, otp) => {
 
 // LOGIN - Step 1: Validate credentials and send OTP
 const login = async ({ email, password }) => {
-  if (!isValidEmail(email)) {
-    const err = new Error("Please enter a valid email address.");
-    err.code = "invalid_email";
-    err.status = 400;
-    throw err;
-  }
-
-  if (typeof password !== "string" || password.length === 0) {
-    const err = new Error("Please enter your password.");
-    err.code = "invalid_password";
-    err.status = 400;
-    throw err;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const user = await findByEmail(normalizedEmail);
+  // 1. Find user with a timeout
+  const user = await User.findOne({ email }).maxTimeMS(10000);
 
   if (!user) {
-    const err = new Error("No account found with this email. Please sign up.");
-    err.code = "user_not_found";
-    err.status = 404;
-    throw err;
+    const error = new Error("Invalid credentials");
+    error.status = 401;
+    error.code = "invalid_credentials";
+    throw error;
   }
 
-  const valid = await verifyPassword(user, password);
+  // 2. Check password
+  const isMatch = await bcrypt.compare(password, user.password);
 
-  if (!valid) {
-    const err = new Error("Incorrect password. Please try again.");
-    err.code = "invalid_credentials";
-    err.status = 401;
-    throw err;
+  if (!isMatch) {
+    const error = new Error("Invalid credentials");
+    error.status = 401;
+    error.code = "invalid_credentials";
+    throw error;
   }
 
-  if (!user.emailVerified) {
-    const err = new Error(
-      "Please verify your email address before signing in.",
-    );
-    err.code = "email_not_verified";
-    err.status = 403;
-    throw err;
-  }
-
-  // 2FA check
-  if (user.twoFactorEnabled && user.twoFactorSecret) {
-    const partialToken = signPartialToken({ sub: user.id }, "two_factor_login");
-    return {
-      requiresTwoFactor: true,
-      partialToken,
-    };
-  }
-
-  // Send login OTP
-  const otp = generateOtp();
-  loginOtpStore.set(normalizedEmail, {
-    otp,
-    expiresAt: Date.now() + 10 * 60 * 1000,
-    createdAt: Date.now(),
-    userId: user.id,
+  // 3. Return the token (MAKE SURE THIS RETURNS)
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
   });
 
-  try {
-    await sendOtpEmail(normalizedEmail, otp);
-  } catch (error) {
-    loginOtpStore.delete(normalizedEmail);
-    const err = new Error(
-      "We could not send the verification email. Please try again.",
-    );
-    err.code = "email_send_failed";
-    err.status = 503;
-    throw err;
-  }
-
-  const partialToken = signPartialToken(
-    { email: normalizedEmail },
-    "login_email_verification",
-  );
-
   return {
-    requiresEmailVerification: true,
-    partialToken,
-    message: "Verification code sent to your email.",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    },
   };
 };
 

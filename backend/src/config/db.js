@@ -1,32 +1,25 @@
 const mongoose = require("mongoose");
-const { MONGODB_URI } = require("./env.js");
+const { MONGO_URI } = require("./env.js");
 
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return;
+  if (isConnected) {
+    console.log("Using existing MongoDB connection");
+    return;
+  }
 
   try {
-    mongoose.set("strictQuery", true);
-
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
+    const db = await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000, // Stop waiting after 5 seconds
+      socketTimeoutMS: 45000,
     });
 
-    isConnected = true;
-    console.log("MongoDB connected");
-
-    mongoose.connection.on("disconnected", () => {
-      console.warn("MongoDB disconnected");
-      isConnected = false;
-    });
-
-    mongoose.connection.on("error", (err) => {
-      console.error("MongoDB connection error:", err.message);
-    });
-  } catch (err) {
-    console.error("MongoDB connection failed:", err.message);
-    process.exit(1);
+    isConnected = db.connections[0].readyState === 1;
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    throw error;
   }
 };
 

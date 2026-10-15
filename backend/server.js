@@ -12,8 +12,9 @@ app.use("/api/auth", authRoutes);
 
 const start = async () => {
   try {
+    // Connect to DB ONCE before starting the server
     await connectDB();
-    console.log("MongoDB connected");
+    console.log("Database initialization complete.");
 
     const server = app.listen(PORT, () => {
       console.log(`App listening on port ${PORT}`);
