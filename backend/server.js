@@ -15,9 +15,13 @@ const start = async () => {
     await connectDB();
     console.log("Database initialization complete.");
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`App listening on port ${PORT}`);
     });
+
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+    server.requestTimeout = 30000;
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);

@@ -7,6 +7,11 @@ const app = express();
 
 app.use(express.json());
 
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 const allowedOrigins = (CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim().replace(/\/+$/, ""));
@@ -44,6 +49,11 @@ app.use(
 
 app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "TTS api is running" });
+});
+
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({ success: false, message: err.message });
 });
 
 module.exports = app;

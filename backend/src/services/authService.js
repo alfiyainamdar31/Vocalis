@@ -326,7 +326,7 @@ const verifyEmailOtp = async (partialToken, otp) => {
 const login = async ({ email, password }) => {
   const normalizedEmail = email.trim().toLowerCase();
 
-  const user = await User.findOne({ email: normalizedEmail });
+  const user = await User.findOne({ email: normalizedEmail }).maxTimeMS(8000);
 
   if (!user) {
     const err = new Error("Invalid credentials");
@@ -346,10 +346,7 @@ const login = async ({ email, password }) => {
 
   if (user.twoFactorEnabled && user.twoFactorSecret) {
     const partialToken = signPartialToken({ sub: user.id }, "two_factor_login");
-    return {
-      requiresTwoFactor: true,
-      partialToken,
-    };
+    return { requiresTwoFactor: true, partialToken };
   }
 
   const otp = generateOtp();
@@ -361,22 +358,14 @@ const login = async ({ email, password }) => {
     createdAt: Date.now(),
   });
 
-  try {
-    await sendOtpEmail(normalizedEmail, otp);
-  } catch (error) {
-    loginOtpStore.delete(normalizedEmail);
-    const err = new Error(
-      "We could not send the verification email. Please try again.",
-    );
-    err.code = "email_send_failed";
-    err.status = 503;
-    throw err;
-  }
-
   const partialToken = signPartialToken(
     { email: normalizedEmail },
     "login_email_verification",
   );
+
+  sendOtpEmail(normalizedEmail, otp).catch((err) => {
+    console.error("OTP email failed:", err.message);
+  });
 
   return {
     requiresEmailVerification: true,
@@ -384,6 +373,7 @@ const login = async ({ email, password }) => {
     message: "Verification code sent to your email.",
   };
 };
+
 // RESEND OTP for login
 const resendLoginOtp = async (partialToken) => {
   const payload = verifyToken(partialToken);
