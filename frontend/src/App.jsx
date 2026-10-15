@@ -13,7 +13,10 @@ import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
+import Settings from "./pages/Settings";
+import SettingsProfile from "./pages/Settings.jsx";
 import TwoFactorSettings from "./pages/TwoFactorSettings";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -36,6 +39,32 @@ function App() {
             <Route path="/changelog" element={<Changelog />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <ProtectedRoute>
+                  <SettingsProfile />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/settings/security"
               element={

@@ -1,108 +1,91 @@
-// client/src/pages/Signup.jsx
-
-import React, { useState } from "react";
-
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
 import {
   AudioLines,
   Loader2,
   AlertCircle,
   ShieldCheck,
   ArrowLeft,
+  CheckCircle2,
 } from "lucide-react";
-
 import { useAuth } from "../hooks/useAuth";
 
 export default function Signup() {
-  const { signup, verifyEmailOtp } = useAuth();
-
+  const { signup, verifyEmailOtp, resendSignupOtp } = useAuth();
   const navigate = useNavigate();
-
   const location = useLocation();
-
   const redirectTo = location.state?.from?.pathname || "/";
 
-  /*
-   * Signup form
-   */
-
   const [name, setName] = useState("");
-
   const [email, setEmail] = useState("");
-
   const [password, setPassword] = useState("");
-
   const [error, setError] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
-
-  /*
-   * Email verification
-   */
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [requiresVerification, setRequiresVerification] = useState(false);
-
   const [partialToken, setPartialToken] = useState("");
-
   const [otp, setOtp] = useState("");
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
 
-  /*
-   * Frontend email validation
-   *
-   * Backend ALSO validates this.
-   */
+  const timerRef = useRef(null);
 
   const isValidEmail = (value) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   };
 
-  /*
-   |--------------------------------------------------------------------------
-   | Submit signup
-   |--------------------------------------------------------------------------
-   */
+  useEffect(() => {
+    if (requiresVerification) {
+      setResendTimer(60);
+      setCanResend(false);
+
+      timerRef.current = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [requiresVerification]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
-
-    /*
-     * Validate email before
-     * sending request.
-     */
+    setSuccessMessage("");
 
     if (!isValidEmail(email)) {
       setError("Please enter a valid email address.");
-
       return;
     }
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
+      return;
+    }
 
+    if (name.trim().length < 2) {
+      setError("Please enter a valid name (at least 2 characters).");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const result = await signup({
-        name,
-        email,
-        password,
-      });
-
-      /*
-       * Signup successful but
-       * account is not created yet.
-       */
+      const result = await signup({ name, email, password });
 
       if (result.requiresEmailVerification) {
         setRequiresVerification(true);
-
         setPartialToken(result.partialToken);
+        setSuccessMessage("Verification code sent to your email.");
       }
     } catch (err) {
       setError(err.message || "Unable to create your account.");
@@ -111,39 +94,32 @@ export default function Signup() {
     }
   };
 
-  /*
-   |--------------------------------------------------------------------------
-   | Verify OTP
-   |--------------------------------------------------------------------------
-   */
-
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-
     setError("");
+    setSuccessMessage("");
 
     if (otp.length !== 6) {
       setError("Please enter the 6-digit verification code.");
-
       return;
     }
 
     setSubmitting(true);
 
     try {
-      await verifyEmailOtp({
-        partialToken,
-        otp,
-      });
+      const data = await verifyEmailOtp({ partialToken, otp });
 
-      /*
-       * Account has now been created
-       * in MongoDB.
-       */
+      if (data.requiresTwoFactor) {
+        // Handle 2FA if needed (redirect to a 2FA page or handle inline)
+        navigate("/login", { replace: true });
+        return;
+      }
 
-      navigate(redirectTo, {
-        replace: true,
-      });
+      // Account created and logged in - show success then redirect
+      setSuccessMessage("Account created successfully! Redirecting...");
+      setTimeout(() => {
+        navigate(redirectTo, { replace: true });
+      }, 1500);
     } catch (err) {
       setError(err.message || "Invalid verification code.");
     } finally {
@@ -151,11 +127,35 @@ export default function Signup() {
     }
   };
 
-  /*
-   |--------------------------------------------------------------------------
-   | Verification screen
-   |--------------------------------------------------------------------------
-   */
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+
+    setError("");
+    setSuccessMessage("");
+    setSubmitting(true);
+
+    try {
+      await resendSignupOtp({ partialToken });
+      setSuccessMessage("New verification code sent to your email.");
+      setResendTimer(60);
+      setCanResend(false);
+
+      timerRef.current = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err.message || "Unable to resend code.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (requiresVerification) {
     return (
@@ -165,15 +165,12 @@ export default function Signup() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
               <ShieldCheck className="h-6 w-6" />
             </div>
-
             <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
               Verify your email
             </h1>
-
             <p className="mt-2 text-sm text-slate-600">
               We sent a 6-digit verification code to <strong>{email}</strong>
             </p>
-
             <p className="mt-2 text-xs text-slate-500">
               Your account will be created only after you enter the correct
               code.
@@ -188,7 +185,6 @@ export default function Signup() {
               >
                 Verification Code
               </label>
-
               <input
                 id="signup-otp"
                 type="text"
@@ -204,13 +200,8 @@ export default function Signup() {
               />
             </div>
 
-            {error && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-
-                <span>{error}</span>
-              </div>
-            )}
+            {error && <ErrorBox message={error} />}
+            {successMessage && <SuccessBox message={successMessage} />}
 
             <button
               type="submit"
@@ -228,29 +219,37 @@ export default function Signup() {
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => {
-              setRequiresVerification(false);
-              setPartialToken("");
-              setOtp("");
-              setError("");
-            }}
-            className="mt-5 flex w-full items-center justify-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to signup
-          </button>
+          <div className="mt-5 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={!canResend || submitting}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              {canResend
+                ? "Resend verification code"
+                : `Resend code in ${resendTimer}s`}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRequiresVerification(false);
+                setPartialToken("");
+                setOtp("");
+                setError("");
+                setSuccessMessage("");
+              }}
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to signup
+            </button>
+          </div>
         </div>
       </main>
     );
   }
-
-  /*
-   |--------------------------------------------------------------------------
-   | Signup form
-   |--------------------------------------------------------------------------
-   */
 
   return (
     <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 px-4 py-16 sm:px-6">
@@ -259,17 +258,13 @@ export default function Signup() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
             <AudioLines className="h-6 w-6" />
           </div>
-
           <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
             Create your account
           </h1>
-
           <p className="mt-2 text-sm text-slate-600">Start using Vocalis.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          {/* Name */}
-
           <div>
             <label
               htmlFor="name"
@@ -277,7 +272,6 @@ export default function Signup() {
             >
               Name
             </label>
-
             <input
               id="name"
               type="text"
@@ -291,8 +285,6 @@ export default function Signup() {
             />
           </div>
 
-          {/* Email */}
-
           <div>
             <label
               htmlFor="email"
@@ -300,7 +292,6 @@ export default function Signup() {
             >
               Email
             </label>
-
             <input
               id="email"
               type="email"
@@ -309,22 +300,12 @@ export default function Signup() {
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
-
-                /*
-                 * Clear an old email
-                 * error while typing.
-                 */
-
-                if (error) {
-                  setError("");
-                }
+                if (error) setError("");
               }}
               placeholder="you@example.com"
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
-
-          {/* Password */}
 
           <div>
             <label
@@ -333,7 +314,6 @@ export default function Signup() {
             >
               Password
             </label>
-
             <input
               id="password"
               type="password"
@@ -345,23 +325,13 @@ export default function Signup() {
               placeholder="At least 8 characters"
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
-
             <p className="mt-1.5 text-xs text-slate-500">
               Minimum 8 characters.
             </p>
           </div>
 
-          {/* Error */}
-
-          {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Submit */}
+          {error && <ErrorBox message={error} />}
+          {successMessage && <SuccessBox message={successMessage} />}
 
           <button
             type="submit"
@@ -390,5 +360,23 @@ export default function Signup() {
         </p>
       </div>
     </main>
+  );
+}
+
+function ErrorBox({ message }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+      <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function SuccessBox({ message }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
+      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
   );
 }

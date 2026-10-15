@@ -1,224 +1,97 @@
-// client/src/services/authApi.js
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3002";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3002/api";
+const TOKEN_KEY = "vocalis_auth_token";
 
-const TOKEN_KEY = "vocalis.auth.token";
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
-/*
-|--------------------------------------------------------------------------
-| API Error
-|--------------------------------------------------------------------------
-*/
-
-export class ApiError extends Error {
-  constructor(message, { status, code } = {}) {
-    super(message);
-
-    this.name = "ApiError";
-    this.status = status;
-    this.code = code;
-  }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Token helpers
-|--------------------------------------------------------------------------
-*/
-
-export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-export const setToken = (token) => {
-  localStorage.setItem(TOKEN_KEY, token);
-};
-
-export const clearToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
-};
-
-/*
-|--------------------------------------------------------------------------
-| Error parser
-|--------------------------------------------------------------------------
-*/
-
-const parseError = async (res) => {
-  let body = {};
-
-  try {
-    body = await res.json();
-  } catch {}
-
-  return new ApiError(body.message || `Request failed (${res.status})`, {
-    status: res.status,
-    code: body.code || "unknown_error",
-  });
-};
-
-/*
-|--------------------------------------------------------------------------
-| Authenticated fetch
-|--------------------------------------------------------------------------
-*/
-
-const authFetch = async (path, options = {}) => {
+const request = async (endpoint, options = {}) => {
   const token = getToken();
 
   const headers = {
     "Content-Type": "application/json",
-
-    ...(options.headers || {}),
+    ...options.headers,
   };
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
   });
 
-  if (!res.ok) {
-    throw await parseError(res);
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data.message || "Request failed");
+    error.code = data.code;
+    error.status = response.status;
+    throw error;
   }
 
-  return res.json();
+  return data;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Signup
-|--------------------------------------------------------------------------
-*/
-
-export const signupApi = ({ name, email, password }) => {
-  return authFetch("/auth/signup", {
+export const signupApi = ({ name, email, password }) =>
+  request("/api/auth/signup", {
     method: "POST",
-
-    body: JSON.stringify({
-      name,
-      email,
-      password,
-    }),
+    body: JSON.stringify({ name, email, password }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| Login
-|--------------------------------------------------------------------------
-*/
-
-export const loginApi = ({ email, password }) => {
-  return authFetch("/auth/login", {
+export const resendSignupOtpApi = ({ partialToken }) =>
+  request("/api/auth/signup/resend-otp", {
     method: "POST",
-
-    body: JSON.stringify({
-      email,
-      password,
-    }),
+    body: JSON.stringify({ partialToken }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| Signup email OTP
-|--------------------------------------------------------------------------
-*/
-
-export const verifyEmailOtpApi = ({ partialToken, otp }) => {
-  return authFetch("/auth/verify-email-otp", {
+export const verifyEmailOtpApi = ({ partialToken, otp }) =>
+  request("/api/auth/signup/verify-otp", {
     method: "POST",
-
-    body: JSON.stringify({
-      partialToken,
-      otp,
-    }),
+    body: JSON.stringify({ partialToken, otp }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| 2FA login
-|--------------------------------------------------------------------------
-*/
-
-export const verify2FALoginApi = ({ partialToken, otp }) => {
-  return authFetch("/auth/verify-2fa-login", {
+export const loginApi = ({ email, password }) =>
+  request("/api/auth/login", {
     method: "POST",
-
-    body: JSON.stringify({
-      partialToken,
-      otp,
-    }),
+    body: JSON.stringify({ email, password }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| Current user
-|--------------------------------------------------------------------------
-*/
-
-export const meApi = () => {
-  return authFetch("/auth/me");
-};
-
-/*
-|--------------------------------------------------------------------------
-| Logout
-|--------------------------------------------------------------------------
-*/
-
-export const logoutApi = () => {
-  return authFetch("/auth/logout", {
+export const resendLoginOtpApi = ({ partialToken }) =>
+  request("/api/auth/login/resend-otp", {
     method: "POST",
+    body: JSON.stringify({ partialToken }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| 2FA setup
-|--------------------------------------------------------------------------
-*/
-
-export const generate2FASetupApi = () => {
-  return authFetch("/auth/2fa/setup", {
+export const verifyLoginOtpApi = ({ partialToken, otp }) =>
+  request("/api/auth/login/verify-otp", {
     method: "POST",
+    body: JSON.stringify({ partialToken, otp }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| Verify 2FA setup
-|--------------------------------------------------------------------------
-*/
-
-export const verify2FASetupApi = ({ otp }) => {
-  return authFetch("/auth/2fa/verify-setup", {
+export const verify2FALoginApi = ({ partialToken, otp }) =>
+  request("/api/auth/login/verify-2fa", {
     method: "POST",
-
-    body: JSON.stringify({
-      otp,
-    }),
+    body: JSON.stringify({ partialToken, otp }),
   });
-};
 
-/*
-|--------------------------------------------------------------------------
-| Disable 2FA
-|--------------------------------------------------------------------------
-*/
+export const meApi = () => request("/api/auth/me");
 
-export const disable2FAApi = ({ otp }) => {
-  return authFetch("/auth/2fa/disable", {
+export const logoutApi = () => request("/api/auth/logout", { method: "POST" });
+
+export const generate2FASetupApi = () =>
+  request("/api/auth/2fa/setup", { method: "POST" });
+
+export const verify2FASetupApi = ({ otp }) =>
+  request("/api/auth/2fa/verify-setup", {
     method: "POST",
-
-    body: JSON.stringify({
-      otp,
-    }),
+    body: JSON.stringify({ otp }),
   });
-};
+
+export const disable2FAApi = ({ otp }) =>
+  request("/api/auth/2fa/disable", {
+    method: "POST",
+    body: JSON.stringify({ otp }),
+  });
