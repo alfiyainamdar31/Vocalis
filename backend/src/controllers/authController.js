@@ -89,12 +89,41 @@ const verifyEmailOtpController = async (req, res) => {
 const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = await login({ email, password });
+
+    console.log("Login attempt for:", email);
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        code: "invalid_input",
+        message: "Email and password are required.",
+      });
+    }
+
+    // Add a timeout to prevent infinite pending
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error("Login timed out. Database connection may be slow."),
+          ),
+        15000,
+      ),
+    );
+
+    const result = await Promise.race([
+      login({ email, password }),
+      timeoutPromise,
+    ]);
+
+    console.log("Login successful for:", email);
+
     return res.json({
       success: true,
       ...result,
     });
   } catch (err) {
+    console.error("Login controller error:", err.message);
     return handleAuthError(res, err);
   }
 };

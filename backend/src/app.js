@@ -6,6 +6,7 @@ const { CORS_ORIGIN } = require("./config/env.js");
 const app = express();
 
 app.use(express.json());
+
 const allowedOrigins = (CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim().replace(/\/+$/, ""));
@@ -13,14 +14,23 @@ const allowedOrigins = (CORS_ORIGIN || "")
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin.replace(/\/+$/, ""))) {
+      const cleanOrigin = origin ? origin.replace(/\/+$/, "") : "";
+
+      if (
+        !origin ||
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.includes("localhost") ||
+        cleanOrigin.includes("vocalis-5phy.onrender.com")
+      ) {
         return callback(null, true);
       }
 
+      console.log(`CORS blocked origin: ${origin}`);
       return callback(new Error(`CORS blocked origin: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   }),
 );
 
@@ -39,6 +49,7 @@ app.get("/api/health", (_req, res) => {
 app.use((req, res, next) => {
   if (req.path.includes("/api/auth/login")) {
     console.log("Login request received:", req.method, req.path);
+    console.log("Request Body:", req.body);
   }
   next();
 });

@@ -11,11 +11,19 @@ app.use("/api", ttsRoutes);
 app.use("/api/auth", authRoutes);
 
 const start = async () => {
-  await connectDB();
+  try {
+    await connectDB();
+    console.log("MongoDB connected");
 
-  app.listen(PORT, () => {
-    console.log(`App listening on port ${PORT}`);
-  });
+    const server = app.listen(PORT, () => {
+      console.log(`App listening on port ${PORT}`);
+    });
+
+    server.setTimeout(30000);
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 };
 
 start();
