@@ -4,8 +4,7 @@ const required = [
   "JWT_SECRET",
   "GEMINI_API_KEY",
   "MONGODB_URI",
-  "EMAIL_USER",
-  "EMAIL_PASS",
+  "RESEND_API_KEY",
 ];
 
 const missing = required.filter((key) => !process.env[key]);
@@ -23,6 +22,6 @@ module.exports = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:5173",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   MONGODB_URI: process.env.MONGODB_URI,
-  EMAIL_USER: process.env.EMAIL_USER,
-  EMAIL_PASS: process.env.EMAIL_PASS,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  EMAIL_USER: process.env.EMAIL_USER || "onboarding@resend.dev",
 };
