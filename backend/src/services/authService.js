@@ -358,14 +358,23 @@ const login = async ({ email, password }) => {
     createdAt: Date.now(),
   });
 
+  try {
+    await sendOtpEmail(normalizedEmail, otp);
+  } catch (error) {
+    loginOtpStore.delete(normalizedEmail);
+    console.error("sendOtpEmail failed:", error);
+    const err = new Error(
+      "We could not send the verification email. Please try again.",
+    );
+    err.code = "email_send_failed";
+    err.status = 503;
+    throw err;
+  }
+
   const partialToken = signPartialToken(
     { email: normalizedEmail },
     "login_email_verification",
   );
-
-  sendOtpEmail(normalizedEmail, otp).catch((err) => {
-    console.error("OTP email failed:", err.message);
-  });
 
   return {
     requiresEmailVerification: true,
