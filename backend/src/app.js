@@ -36,4 +36,11 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "TTS api is running" });
 });
 
+app.use((req, res, next) => {
+  if (req.path.includes("/api/auth/login")) {
+    console.log("Login request received:", req.method, req.path);
+  }
+  next();
+});
+
 module.exports = app;
