@@ -1,12 +1,11 @@
-// backend/src/services/emailService.js
 const nodemailer = require("nodemailer");
 const { EMAIL_USER, EMAIL_PASS } = require("../config/env.js");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail", // or use host: "smtp.gmail.com", port: 587, secure: false [citation:11]
+  service: "gmail",
   auth: {
     user: EMAIL_USER,
-    pass: EMAIL_PASS, // 16-character App Password
+    pass: EMAIL_PASS,
   },
 });
 

@@ -1,16 +1,16 @@
-// server/src/routes/authRoutes.js
-
 const express = require("express");
+const router = express.Router();
 
 const {
   signupController,
-  loginController,
+  resendSignupOtpController,
   verifyEmailOtpController,
+  loginController,
+  resendLoginOtpController,
+  verifyLoginOtpController,
   verify2FALoginController,
-
   meController,
   logoutController,
-
   generate2FASetupController,
   verify2FASetupController,
   disable2FAController,
@@ -18,42 +18,20 @@ const {
 
 const { requireAuth } = require("../middleware/requireAuth.js");
 
-const router = express.Router();
-
-/*
-|--------------------------------------------------------------------------
-| Public authentication routes
-|--------------------------------------------------------------------------
-*/
-
 router.post("/signup", signupController);
+router.post("/signup/resend-otp", resendSignupOtpController);
+router.post("/signup/verify-otp", verifyEmailOtpController);
 
 router.post("/login", loginController);
-
-router.post("/verify-email-otp", verifyEmailOtpController);
-
-router.post("/verify-2fa-login", verify2FALoginController);
-
-/*
-|--------------------------------------------------------------------------
-| Authenticated routes
-|--------------------------------------------------------------------------
-*/
+router.post("/login/resend-otp", resendLoginOtpController);
+router.post("/login/verify-otp", verifyLoginOtpController);
+router.post("/login/verify-2fa", verify2FALoginController);
 
 router.get("/me", requireAuth, meController);
-
 router.post("/logout", requireAuth, logoutController);
 
-/*
-|--------------------------------------------------------------------------
-| 2FA settings
-|--------------------------------------------------------------------------
-*/
-
 router.post("/2fa/setup", requireAuth, generate2FASetupController);
-
 router.post("/2fa/verify-setup", requireAuth, verify2FASetupController);
-
 router.post("/2fa/disable", requireAuth, disable2FAController);
 
 module.exports = router;

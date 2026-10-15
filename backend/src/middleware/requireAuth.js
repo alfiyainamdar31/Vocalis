@@ -1,5 +1,3 @@
-// server/src/middleware/requireAuth.js
-
 const { getUserFromToken } = require("../services/authService.js");
 
 const requireAuth = async (req, res, next) => {
@@ -15,7 +13,6 @@ const requireAuth = async (req, res, next) => {
     }
 
     const token = authorization.slice(7);
-
     const user = await getUserFromToken(token);
 
     if (!user) {
@@ -28,11 +25,9 @@ const requireAuth = async (req, res, next) => {
     }
 
     req.user = user;
-
     next();
   } catch (error) {
     console.error("Authentication middleware error:", error);
-
     return res.status(401).json({
       success: false,
       code: "authentication_failed",
@@ -41,6 +36,4 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  requireAuth,
-};
+module.exports = { requireAuth };
