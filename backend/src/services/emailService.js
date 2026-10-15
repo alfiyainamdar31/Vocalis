@@ -2,14 +2,24 @@ const nodemailer = require("nodemailer");
 const { EMAIL_USER, EMAIL_PASS } = require("../config/env.js");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
-  connectionTimeout: 8000,
-  greetingTimeout: 8000,
-  socketTimeout: 10000,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
+});
+
+transporter.verify((error) => {
+  if (error) {
+    console.error("SMTP transporter verification failed:", error);
+  } else {
+    console.log("SMTP transporter is ready");
+  }
 });
 
 const sendOtpEmail = async (to, otp) => {
@@ -20,13 +30,9 @@ const sendOtpEmail = async (to, otp) => {
     html: `<p>Your verification code is <b>${otp}</b>. It expires in 10 minutes.</p>`,
   };
 
-  const sendPromise = transporter.sendMail(mailOptions);
-
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Email send timed out")), 12000),
-  );
-
-  await Promise.race([sendPromise, timeoutPromise]);
+  const info = await transporter.sendMail(mailOptions);
+  console.log("OTP email sent:", info.messageId);
+  return info;
 };
 
 module.exports = { sendOtpEmail };
