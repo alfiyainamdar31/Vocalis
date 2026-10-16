@@ -39,6 +39,21 @@ app.use(
   }),
 );
 
+app.get("/api/debug/email-test", async (_req, res) => {
+  try {
+    const { sendOtpEmail } = require("./services/emailService.js");
+    const info = await sendOtpEmail("inamdar3105@gmail.com", "123456");
+    res.json({ ok: true, info });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    });
+  }
+});
+
 app.use(
   "/voice-previews",
   express.static(path.join(__dirname, "..", "assets", "voice-previews"), {
