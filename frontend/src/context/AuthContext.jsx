@@ -59,13 +59,15 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const signup = useCallback(async ({ name, email, password }) => {
-    return signupApi({ name, email, password });
-  }, []);
+  const signup = useCallback(
+    async ({ name, email, password }) => signupApi({ name, email, password }),
+    [],
+  );
 
-  const resendSignupOtp = useCallback(async ({ partialToken }) => {
-    return resendSignupOtpApi({ partialToken });
-  }, []);
+  const resendSignupOtp = useCallback(
+    async ({ partialToken }) => resendSignupOtpApi({ partialToken }),
+    [],
+  );
 
   const verifyEmailOtp = useCallback(async ({ partialToken, otp }) => {
     const data = await verifyEmailOtpApi({ partialToken, otp });
@@ -74,13 +76,15 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const login = useCallback(async ({ email, password }) => {
-    return loginApi({ email, password });
-  }, []);
+  const login = useCallback(
+    async ({ email, password }) => loginApi({ email, password }),
+    [],
+  );
 
-  const resendLoginOtp = useCallback(async ({ partialToken }) => {
-    return resendLoginOtpApi({ partialToken });
-  }, []);
+  const resendLoginOtp = useCallback(
+    async ({ partialToken }) => resendLoginOtpApi({ partialToken }),
+    [],
+  );
 
   const verifyLoginOtp = useCallback(async ({ partialToken, otp }) => {
     const data = await verifyLoginOtpApi({ partialToken, otp });
@@ -101,9 +105,7 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const generate2FASetup = useCallback(async () => {
-    return generate2FASetupApi();
-  }, []);
+  const generate2FASetup = useCallback(() => generate2FASetupApi(), []);
 
   const verify2FASetup = useCallback(async ({ otp }) => {
     const data = await verify2FASetupApi({ otp });
@@ -121,7 +123,7 @@ export function AuthProvider({ children }) {
     try {
       await logoutApi();
     } catch {
-      // Ignore errors on logout
+      /* ignore */
     }
     clearToken();
     setUser(null);

@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   CheckCircle2,
 } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/useAuth.js";
 
 export default function Signup() {
   const { signup, verifyEmailOtp, resendSignupOtp } = useAuth();
@@ -31,9 +31,8 @@ export default function Signup() {
 
   const timerRef = useRef(null);
 
-  const isValidEmail = (value) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-  };
+  const isValidEmail = (value) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
   useEffect(() => {
     if (requiresVerification) {
@@ -107,19 +106,12 @@ export default function Signup() {
     setSubmitting(true);
 
     try {
-      const data = await verifyEmailOtp({ partialToken, otp });
+      await verifyEmailOtp({ partialToken, otp });
 
-      if (data.requiresTwoFactor) {
-        // Handle 2FA if needed (redirect to a 2FA page or handle inline)
-        navigate("/login", { replace: true });
-        return;
-      }
-
-      // Account created and logged in - show success then redirect
       setSuccessMessage("Account created successfully! Redirecting...");
       setTimeout(() => {
         navigate(redirectTo, { replace: true });
-      }, 1500);
+      }, 1200);
     } catch (err) {
       setError(err.message || "Invalid verification code.");
     } finally {
@@ -172,8 +164,7 @@ export default function Signup() {
               We sent a 6-digit verification code to <strong>{email}</strong>
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Your account will be created only after you enter the correct
-              code.
+              Your account will be created after you enter the correct code.
             </p>
           </div>
 
@@ -194,7 +185,9 @@ export default function Signup() {
                 maxLength={6}
                 autoFocus
                 value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
                 placeholder="000000"
                 className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-2xl font-mono tracking-widest outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />

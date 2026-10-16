@@ -23,7 +23,12 @@ const request = async (endpoint, options = {}) => {
     headers,
   });
 
-  const data = await response.json();
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
 
   if (!response.ok) {
     const error = new Error(data.message || "Request failed");

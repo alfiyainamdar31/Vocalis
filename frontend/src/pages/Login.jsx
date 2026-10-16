@@ -21,14 +21,12 @@ export default function Login() {
   const [successMessage, setSuccessMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Email verification state
   const [requiresVerification, setRequiresVerification] = useState(false);
   const [emailPartialToken, setEmailPartialToken] = useState("");
   const [otp, setOtp] = useState("");
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // 2FA state
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [twoFactorPartialToken, setTwoFactorPartialToken] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
@@ -177,7 +175,6 @@ export default function Login() {
     }
   };
 
-  // Email verification screen
   if (requiresVerification) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 px-4 py-16 sm:px-6">
@@ -255,7 +252,6 @@ export default function Login() {
     );
   }
 
-  // 2FA screen
   if (requiresTwoFactor) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 px-4 py-16 sm:px-6">
@@ -318,11 +314,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-            The code changes automatically every few seconds. Make sure your
-            phone's date and time are set automatically.
-          </p>
         </div>
       </main>
     );
