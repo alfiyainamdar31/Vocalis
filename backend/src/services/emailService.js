@@ -1,36 +1,36 @@
-const { Resend } = require("resend");
-const { RESEND_API_KEY, RESEND_FROM } = require("../config/env.js");
+const SibApiV3Sdk = require("sib-api-v3-sdk");
+const { BREVO_API_KEY, EMAIL_USER } = require("../config/env.js");
 
-const resend = new Resend(RESEND_API_KEY);
+const client = SibApiV3Sdk.ApiClient.instance;
+const apiKey = client.authentications["api-key"];
+apiKey.apiKey = BREVO_API_KEY;
 
-const withTimeout = (promise, ms, label) => {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${ms}ms`)),
-      ms,
-    );
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-};
+const transactionalEmailsApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const sendOtpEmail = async (to, otp) => {
-  const sendPromise = resend.emails.send({
-    from: RESEND_FROM,
-    to,
-    subject: "Your Vocalis verification code",
-    html: `<p>Your verification code is <b>${otp}</b>. It expires in 10 minutes.</p>`,
-  });
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
-  const result = await withTimeout(sendPromise, 10000, "Resend API");
+  sendSmtpEmail.sender = {
+    name: "Vocalis",
+    email: EMAIL_USER,
+  };
+  sendSmtpEmail.to = [{ email: to }];
+  sendSmtpEmail.subject = "Your Vocalis verification code";
+  sendSmtpEmail.htmlContent = `<p>Your verification code is <b>${otp}</b>. It expires in 10 minutes.</p>`;
 
-  if (result.error) {
-    console.error("Resend error:", result.error);
-    throw new Error(result.error.message || "Resend send failed");
+  try {
+    const result = await transactionalEmailsApi.sendTransacEmail(sendSmtpEmail);
+    console.log("OTP email sent to:", to, "messageId:", result.messageId);
+    return result;
+  } catch (error) {
+    console.error("Brevo send error:", {
+      message: error?.message,
+      code: error?.code,
+      response: error?.response?.body,
+      status: error?.response?.statusCode,
+    });
+    throw error;
   }
-
-  console.log("OTP email sent to:", to, "id:", result.data?.id);
-  return result.data;
 };
 
 module.exports = { sendOtpEmail };
