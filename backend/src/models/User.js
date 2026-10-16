@@ -2,12 +2,7 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 80,
-    },
+    name: { type: String, required: true, trim: true, maxlength: 80 },
     email: {
       type: String,
       required: true,
@@ -16,30 +11,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    twoFactorSecret: {
-      type: String,
-      default: "",
-    },
-    twoFactorPendingSecret: {
-      type: String,
-      default: "",
-    },
-    lastActiveAt: {
-      type: Date,
-      default: Date.now,
-    },
+    passwordHash: { type: String, required: true },
+    emailVerified: { type: Boolean, default: false },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, default: "" },
+    twoFactorPendingSecret: { type: String, default: "" },
+    lastActiveAt: { type: Date, default: Date.now },
   },
   {
     timestamps: true,

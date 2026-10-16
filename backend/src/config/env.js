@@ -23,5 +23,5 @@ module.exports = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   MONGODB_URI: process.env.MONGODB_URI,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
-  EMAIL_USER: process.env.EMAIL_USER || "onboarding@resend.dev",
+  RESEND_FROM: process.env.RESEND_FROM || "Vocalis <onboarding@resend.dev>",
 };

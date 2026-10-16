@@ -7,10 +7,7 @@ const QRCode = require("qrcode");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/env.js");
 
 const {
-  createVerifiedUser,
-  findByEmail,
   findById,
-  verifyPassword,
   toPublicUser,
   setTwoFactorPendingSecret,
   enableTwoFactor,
@@ -19,69 +16,38 @@ const {
 } = require("./userStore.js");
 
 const { sendOtpEmail } = require("./emailService.js");
-
 const User = require("../models/User.js");
 
-// In-memory store for pending signups (use Redis in production)
 const pendingSignups = new Map();
-
-// In-memory store for login OTPs (use Redis in production)
 const loginOtpStore = new Map();
+
+const SESSION_INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000;
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const isValidEmail = (email) => {
-  return (
-    typeof email === "string" && EMAIL_REGEX.test(email.trim().toLowerCase())
-  );
-};
+const isValidEmail = (email) =>
+  typeof email === "string" && EMAIL_REGEX.test(email.trim().toLowerCase());
 
-const validatePassword = (password) => {
-  return typeof password === "string" && password.length >= 8;
-};
+const validatePassword = (password) =>
+  typeof password === "string" && password.length >= 8;
 
-const validateName = (name) => {
-  return (
-    typeof name === "string" &&
-    name.trim().length >= 2 &&
-    name.trim().length <= 80
-  );
-};
+const validateName = (name) =>
+  typeof name === "string" &&
+  name.trim().length >= 2 &&
+  name.trim().length <= 80;
 
-const validateOtp = (otp) => {
-  return typeof otp === "string" && /^\d{6}$/.test(otp);
-};
+const validateOtp = (otp) => typeof otp === "string" && /^\d{6}$/.test(otp);
 
-const generateOtp = () => {
-  return crypto.randomInt(100000, 1000000).toString();
-};
+const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
 
-const signToken = (user) => {
-  return jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      purpose: "access",
-    },
-    JWT_SECRET,
-    {
-      expiresIn: JWT_EXPIRES_IN,
-    },
-  );
-};
+const signToken = (user) =>
+  jwt.sign({ sub: user.id, email: user.email, purpose: "access" }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
 
-const signPartialToken = (payload, purpose) => {
-  return jwt.sign(
-    {
-      ...payload,
-      purpose,
-    },
-    JWT_SECRET,
-    {
-      expiresIn: "10m",
-    },
-  );
-};
+const signPartialToken = (payload, purpose) =>
+  jwt.sign({ ...payload, purpose }, JWT_SECRET, { expiresIn: "10m" });
 
 const verifyToken = (token) => {
   try {
@@ -91,7 +57,6 @@ const verifyToken = (token) => {
   }
 };
 
-// SIGNUP - Step 1: Validate and send OTP
 const signup = async ({ name, email, password }) => {
   if (!validateName(name)) {
     const err = new Error(
@@ -118,8 +83,7 @@ const signup = async ({ name, email, password }) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Check if verified account already exists
-  const existingUser = await findByEmail(normalizedEmail);
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     const err = new Error(
       "An account with this email already exists. Please sign in instead.",
@@ -137,7 +101,7 @@ const signup = async ({ name, email, password }) => {
     email: normalizedEmail,
     passwordHash,
     otp,
-    expiresAt: Date.now() + 10 * 60 * 1000,
+    expiresAt: Date.now() + OTP_TTL_MS,
     createdAt: Date.now(),
   });
 
@@ -145,6 +109,7 @@ const signup = async ({ name, email, password }) => {
     await sendOtpEmail(normalizedEmail, otp);
   } catch (error) {
     pendingSignups.delete(normalizedEmail);
+    console.error("signup sendOtpEmail failed:", error.message);
     const err = new Error(
       "We could not send the verification email. Please try again.",
     );
@@ -165,7 +130,6 @@ const signup = async ({ name, email, password }) => {
   };
 };
 
-// RESEND OTP for signup
 const resendSignupOtp = async (partialToken) => {
   const payload = verifyToken(partialToken);
 
@@ -192,7 +156,6 @@ const resendSignupOtp = async (partialToken) => {
     throw err;
   }
 
-  // Rate limit: 1 minute between resends
   const timeSinceCreation = Date.now() - signupRecord.createdAt;
   if (timeSinceCreation < 60 * 1000) {
     const waitSeconds = Math.ceil((60 * 1000 - timeSinceCreation) / 1000);
@@ -206,13 +169,13 @@ const resendSignupOtp = async (partialToken) => {
 
   const newOtp = generateOtp();
   signupRecord.otp = newOtp;
-  signupRecord.expiresAt = Date.now() + 10 * 60 * 1000;
+  signupRecord.expiresAt = Date.now() + OTP_TTL_MS;
   signupRecord.createdAt = Date.now();
-  pendingSignups.set(normalizedEmail, signupRecord);
 
   try {
     await sendOtpEmail(normalizedEmail, newOtp);
   } catch (error) {
+    console.error("resendSignupOtp sendOtpEmail failed:", error.message);
     const err = new Error(
       "We could not send the verification email. Please try again.",
     );
@@ -224,7 +187,6 @@ const resendSignupOtp = async (partialToken) => {
   return { message: "New verification code sent." };
 };
 
-// VERIFY SIGNUP OTP
 const verifyEmailOtp = async (partialToken, otp) => {
   if (!validateOtp(otp)) {
     const err = new Error("Please enter the 6-digit verification code.");
@@ -277,20 +239,19 @@ const verifyEmailOtp = async (partialToken, otp) => {
     throw err;
   }
 
-  // Create the user in MongoDB
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (existingUser) {
+    pendingSignups.delete(normalizedEmail);
+    const err = new Error(
+      "An account with this email already exists. Please sign in instead.",
+    );
+    err.code = "email_in_use";
+    err.status = 409;
+    throw err;
+  }
+
   let user;
   try {
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      pendingSignups.delete(normalizedEmail);
-      const err = new Error(
-        "An account with this email already exists. Please sign in instead.",
-      );
-      err.code = "email_in_use";
-      err.status = 409;
-      throw err;
-    }
-
     user = await User.create({
       name: signupRecord.name,
       email: signupRecord.email,
@@ -299,9 +260,6 @@ const verifyEmailOtp = async (partialToken, otp) => {
       lastActiveAt: new Date(),
     });
   } catch (error) {
-    if (error.code === "email_in_use") {
-      throw error;
-    }
     console.error("User creation error:", error);
     const err = new Error(
       "We could not create your account. Please try again.",
@@ -322,17 +280,17 @@ const verifyEmailOtp = async (partialToken, otp) => {
   };
 };
 
-// LOGIN - Step 1: Validate credentials and send OTP
 const login = async ({ email, password }) => {
-  console.log("login() start for:", email);
+  if (!isValidEmail(email)) {
+    const err = new Error("Please enter a valid email address.");
+    err.code = "invalid_email";
+    err.status = 400;
+    throw err;
+  }
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  const user = await User.findOne({ email: normalizedEmail })
-    .maxTimeMS(5000)
-    .lean(false);
-
-  console.log("login() user lookup done:", Boolean(user));
+  const user = await User.findOne({ email: normalizedEmail }).maxTimeMS(8000);
 
   if (!user) {
     const err = new Error("Invalid credentials");
@@ -342,7 +300,6 @@ const login = async ({ email, password }) => {
   }
 
   const isMatch = await bcrypt.compare(password, user.passwordHash);
-  console.log("login() password check done:", isMatch);
 
   if (!isMatch) {
     const err = new Error("Invalid credentials");
@@ -361,18 +318,15 @@ const login = async ({ email, password }) => {
   loginOtpStore.set(normalizedEmail, {
     otp,
     userId: user.id,
-    expiresAt: Date.now() + 10 * 60 * 1000,
+    expiresAt: Date.now() + OTP_TTL_MS,
     createdAt: Date.now(),
   });
 
-  console.log("login() calling sendOtpEmail");
-
   try {
     await sendOtpEmail(normalizedEmail, otp);
-    console.log("login() sendOtpEmail succeeded");
   } catch (error) {
     loginOtpStore.delete(normalizedEmail);
-    console.error("login() sendOtpEmail failed:", error);
+    console.error("login sendOtpEmail failed:", error.message);
     const err = new Error(
       "We could not send the verification email. Please try again.",
     );
@@ -386,8 +340,6 @@ const login = async ({ email, password }) => {
     "login_email_verification",
   );
 
-  console.log("login() returning requiresEmailVerification");
-
   return {
     requiresEmailVerification: true,
     partialToken,
@@ -395,7 +347,6 @@ const login = async ({ email, password }) => {
   };
 };
 
-// RESEND OTP for login
 const resendLoginOtp = async (partialToken) => {
   const payload = verifyToken(partialToken);
 
@@ -435,13 +386,13 @@ const resendLoginOtp = async (partialToken) => {
 
   const newOtp = generateOtp();
   record.otp = newOtp;
-  record.expiresAt = Date.now() + 10 * 60 * 1000;
+  record.expiresAt = Date.now() + OTP_TTL_MS;
   record.createdAt = Date.now();
-  loginOtpStore.set(normalizedEmail, record);
 
   try {
     await sendOtpEmail(normalizedEmail, newOtp);
   } catch (error) {
+    console.error("resendLoginOtp sendOtpEmail failed:", error.message);
     const err = new Error(
       "We could not send the verification email. Please try again.",
     );
@@ -453,7 +404,6 @@ const resendLoginOtp = async (partialToken) => {
   return { message: "New verification code sent." };
 };
 
-// VERIFY LOGIN OTP
 const verifyLoginOtp = async (partialToken, otp) => {
   if (!validateOtp(otp)) {
     const err = new Error("Please enter the 6-digit verification code.");
@@ -516,16 +466,12 @@ const verifyLoginOtp = async (partialToken, otp) => {
     throw err;
   }
 
-  // Check 2FA
   if (user.twoFactorEnabled && user.twoFactorSecret) {
     const twoFactorToken = signPartialToken(
       { sub: user.id },
       "two_factor_login",
     );
-    return {
-      requiresTwoFactor: true,
-      partialToken: twoFactorToken,
-    };
+    return { requiresTwoFactor: true, partialToken: twoFactorToken };
   }
 
   await updateLastActive(user.id);
@@ -539,7 +485,6 @@ const verifyLoginOtp = async (partialToken, otp) => {
   };
 };
 
-// VERIFY 2FA DURING LOGIN
 const verify2FALogin = async (partialToken, otp) => {
   if (!validateOtp(otp)) {
     const err = new Error("Please enter the 6-digit authenticator code.");
@@ -601,7 +546,6 @@ const verify2FALogin = async (partialToken, otp) => {
   };
 };
 
-// 2FA SETUP
 const generate2FASetup = async (userId) => {
   const user = await findById(userId);
 
@@ -688,9 +632,7 @@ const verify2FASetup = async (userId, otp) => {
     user.twoFactorPendingSecret,
   );
 
-  return {
-    user: toPublicUser(updatedUser),
-  };
+  return { user: toPublicUser(updatedUser) };
 };
 
 const disable2FA = async (userId, otp) => {
@@ -735,35 +677,22 @@ const disable2FA = async (userId, otp) => {
 
   const updatedUser = await disableTwoFactor(user.id);
 
-  return {
-    user: toPublicUser(updatedUser),
-  };
+  return { user: toPublicUser(updatedUser) };
 };
 
-// SESSION VALIDATION - Check token and last active time
 const getUserFromToken = async (token) => {
   const payload = verifyToken(token);
 
-  if (!payload || payload.purpose !== "access") {
-    return null;
-  }
+  if (!payload || payload.purpose !== "access") return null;
 
   const user = await findById(payload.sub);
+  if (!user) return null;
 
-  if (!user) {
+  const lastActive = new Date(user.lastActiveAt).getTime();
+  if (Date.now() - lastActive > SESSION_INACTIVITY_MS) {
     return null;
   }
 
-  // Check session expiry: if user hasn't been active for 1 week, expire session
-  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-  const timeSinceLastActive =
-    Date.now() - new Date(user.lastActiveAt).getTime();
-
-  if (timeSinceLastActive > oneWeekMs) {
-    return null;
-  }
-
-  // Update last active time
   await updateLastActive(user.id);
 
   return toPublicUser(user);

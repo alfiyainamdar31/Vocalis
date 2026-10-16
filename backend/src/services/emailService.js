@@ -1,9 +1,5 @@
 const { Resend } = require("resend");
-const { RESEND_API_KEY } = require("../config/env.js");
-
-if (!RESEND_API_KEY) {
-  console.error("RESEND_API_KEY is missing");
-}
+const { RESEND_API_KEY, RESEND_FROM } = require("../config/env.js");
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -19,10 +15,8 @@ const withTimeout = (promise, ms, label) => {
 };
 
 const sendOtpEmail = async (to, otp) => {
-  console.log("Attempting to send OTP email to:", to);
-
   const sendPromise = resend.emails.send({
-    from: "Vocalis <onboarding@resend.dev>",
+    from: RESEND_FROM,
     to,
     subject: "Your Vocalis verification code",
     html: `<p>Your verification code is <b>${otp}</b>. It expires in 10 minutes.</p>`,
@@ -35,7 +29,7 @@ const sendOtpEmail = async (to, otp) => {
     throw new Error(result.error.message || "Resend send failed");
   }
 
-  console.log("OTP email sent:", result.data?.id);
+  console.log("OTP email sent to:", to, "id:", result.data?.id);
   return result.data;
 };
 
